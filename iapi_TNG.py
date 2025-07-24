@@ -25,18 +25,20 @@ def get(path, params=None, fName='temp'): # gets data from url, saves to file
     Routine to pull data from online
     Credit to TNG team
     """
-    
+    print(f"Fetching data from {path} with params {params} and saving to {fName}")
     # make HTTP GET request to path
     if (len(headers['api-key'])!=32):
         print("Check your api key")
     r = requests.get(path, params=params, headers=headers)
     
+    print(f"Response code: {r.status_code}")
     # raise exception if response code is not HTTP SUCCESS (200)
     r.raise_for_status()
 
     if r.headers['content-type'] == 'application/json':
         return r.json() # parse json responses automatically
 
+    print(f"Saving data to {fName}")
     dataFile=fName+'.hdf5'
     # Saves to file, currently disabled
     print(r.headers)
