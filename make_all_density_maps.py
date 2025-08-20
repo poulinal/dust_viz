@@ -4,6 +4,7 @@ from scipy import spatial
 from make_density_map import *
 from os.path import exists
 import glob
+import h5py
 
 
 #######
@@ -43,6 +44,8 @@ import requests
 #update to read information from particle files
 #set  h_vals with SubfindHsml from particle files
 
+TNG300_1_boxsize = 	302.6 #in Mpc
+
 if __name__ == '__main__':
     
     # PATH_TO_FILES = '/projectnb/gravlens/bnmcd/SFR/catalogs/boundparts/'
@@ -65,30 +68,44 @@ if __name__ == '__main__':
         
 
             hval = this_file
-            h_vals = hval['PartType0']['SubfindHsml'][:]  # array, one per gas particle
+            h_vals = hval['PartType0']['SubfindHsml'][:].astype(np.float64)   # array, one per gas particle
         
             # if exists("/projectnb/res-star/3D_maps/density_maps/boundparts/stellar_mass_density_map_subID_"+str(this_subid)+".npy"): continue
             
             # this_file = np.load(all_files[this_pkl], allow_pickle=True)
-            star_pos = this_file['PartType0']['Coordinates'].astype(np.float64) #particle positions #UPDATE: update call to pull from particle files
-            star_mass =this_file['PartType0']['Density'] #particle masses #UPDATE: update call to pull from particle files - either gas mass for gas density or dust mass from new files
+            star_pos = this_file['PartType0']['Coordinates'][:].astype(np.float64) #particle positions #UPDATE: update call to pull from particle files
+            print(f"star_pos: {star_pos}")
+            star_mass =this_file['PartType0']['Density'][:] #particle masses #UPDATE: update call to pull from particle files - either gas mass for gas density or dust mass from new files
+        print(f"Loaded data for subhalo {this_subid} with {star_pos.shape} particles. with h_vals shape: {h_vals.shape}, star_pos shape: {star_pos.shape}, star_mass shape: {star_mass.shape}")
         
-        group_url = f'http://www.tng-project.org/api/TNG300-1/snapshots/99/halos/{haloNum}/'
-        group_data = requests.get(group_url).json()
-        # print("Group data keys:", group_data.keys())
-        # Virial radius (R200c) in simulation units (ckpc/h)
-        virial_radius = group_data['Group_R_Crit200']
 
+        # Virial radius (R200c) in simulation units (ckpc/h)
+        with h5py.File('tempCat_groupR200c.hdf5.hdf5', 'r') as f:
+            print("Group data keys:", f['Group']['Group_R_Crit200'])
+            virial_radius = f['Group']['Group_R_Crit200'][:] # in 𝑐𝑘𝑝𝑐/ℎ
+            
+        with h5py.File('tempCat_groupPos.hdf5.hdf5', 'r') as f:
+            print("Group data keys:", f.keys())
+            central_pos = f['Group']['GroupPos'][:] # in 𝑐𝑘𝑝𝑐/ℎ
+        print(f"shape Virial Radius (R200c): {virial_radius.shape} ckpc/h")
         # Convert to physical units if needed
         h = 0.6774  # Hubble parameter
-        virial_radius_pkpc = virial_radius / h  # physical kpc
+        virial_radius_pkpc = virial_radius[0] / h  # physical kpc
+        central_pos_halo0 = central_pos[0] # ckpc/h
+        
+        star_pos = (star_pos - central_pos_halo0).astype(np.float64)   # shift positions to center of halo
+        print(f"Central position of halo 0: {central_pos_halo0} code units, now starpos is {star_pos}")
         # print("group data keys:", group_data.keys())
         # maxrad = group_data['Group_R_Crit200'] #radius within which to map #UPDATE: either set manually or from something like 2x virial radius (in code units)
-        maxrad = virial_radius * 2
+        maxrad = virial_radius[0] * 2
+        # maxrad = virial_radius_pkpc * 2 * 1000 #in pc
+        print(star_pos)
+        print(f"Max radius for mapping: {maxrad} code units")
 
         pos_mask = (star_pos[:,0]>=-1*maxrad) & (star_pos[:,0]<=maxrad) & (star_pos[:,1]>=-1*maxrad) & (star_pos[:,1]<=maxrad) & (star_pos[:,2]>=-1*maxrad) & (star_pos[:,2]<=maxrad)
         star_pos = star_pos[pos_mask]
         star_mass = star_mass[pos_mask]
+        print(f"shape after masking: star_pos {star_pos.shape}, star_mass {star_mass.shape}")
 
         first_axis_min = np.min(star_pos[:,0])
         second_axis_min= np.min(star_pos[:,1])
