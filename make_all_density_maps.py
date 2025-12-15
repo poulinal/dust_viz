@@ -46,10 +46,25 @@ import requests
 
 TNG300_1_boxsize = 	302.6 #in Mpc
 
-if __name__ == '__main__':
-    
+sim='TNG300-1'
+
+baseUrl = 'http://www.tng-project.org/api/'
+r=iapi.get(baseUrl)
+print(r)
+#check the properties of the simulation you have selected
+simUrl = baseUrl+sim
+print(simUrl) 
+simdata = iapi.get(simUrl)
+h = simdata.get('hubble')
+print(f"hubble from simdata: {h}")
+z = 0
+a = 1.0 / (1 + z)  # scale factor, where z = redshift
+
+
+def make_all_maps():
     # PATH_TO_FILES = '/projectnb/gravlens/bnmcd/SFR/catalogs/boundparts/'
-    PATH_TO_FILES = '/Users/alexpoulin/Downloads/git/dust_viz/data/'
+    # PATH_TO_FILES = '/Users/alexpoulin/Downloads/git/dust_viz/data/'
+    PATH_TO_FILES = '/home/poulin.al/git/dust_viz/data/'
     # all_files = glob.glob(PATH_TO_FILES+"*.pkl")
     #all_files=['/projectnb/gravlens/bnmcd/SFR/catalogs/boundparts/270967.pkl'] #test file
     all_files = glob.glob(PATH_TO_FILES+"*.hdf5")
@@ -75,23 +90,28 @@ if __name__ == '__main__':
             # this_file = np.load(all_files[this_pkl], allow_pickle=True)
             star_pos = this_file['PartType0']['Coordinates'][:].astype(np.float64) #particle positions #UPDATE: update call to pull from particle files
             print(f"star_pos: {star_pos}")
+            global h
+            global a
+            star_pos = star_pos * a / h
             star_mass =this_file['PartType0']['Density'][:] #particle masses #UPDATE: update call to pull from particle files - either gas mass for gas density or dust mass from new files
         print(f"Loaded data for subhalo {this_subid} with {star_pos.shape} particles. with h_vals shape: {h_vals.shape}, star_pos shape: {star_pos.shape}, star_mass shape: {star_mass.shape}")
         
 
         # Virial radius (R200c) in simulation units (ckpc/h)
-        with h5py.File('tempCat_groupR200c.hdf5.hdf5', 'r') as f:
-            print("Group data keys:", f['Group']['Group_R_Crit200'])
+        with h5py.File('data/groupR200/tempCat_groupR200c.hdf5', 'r') as f:
+            # print("Group data keys:", f['Group']['Group_R_Crit200'])
             virial_radius = f['Group']['Group_R_Crit200'][:] # in 𝑐𝑘𝑝𝑐/ℎ
             
-        with h5py.File('tempCat_groupPos.hdf5.hdf5', 'r') as f:
-            print("Group data keys:", f.keys())
+        with h5py.File('data/groupR200/tempCat_groupPos.hdf5', 'r') as f:
+            # print("Group data keys:", f.keys())
             central_pos = f['Group']['GroupPos'][:] # in 𝑐𝑘𝑝𝑐/ℎ
+        central_pos = central_pos * a / h
         print(f"shape Virial Radius (R200c): {virial_radius.shape} ckpc/h")
+        
         # Convert to physical units if needed
         h = 0.6774  # Hubble parameter
         virial_radius_pkpc = virial_radius[0] / h  # physical kpc
-        central_pos_halo0 = central_pos[0] # ckpc/h
+        central_pos_halo0 = central_pos[0] # kpc
         
         star_pos = (star_pos - central_pos_halo0).astype(np.float64)   # shift positions to center of halo
         print(f"Central position of halo 0: {central_pos_halo0} code units, now starpos is {star_pos}")
@@ -102,9 +122,13 @@ if __name__ == '__main__':
         print(star_pos)
         print(f"Max radius for mapping: {maxrad} code units")
 
+        
         pos_mask = (star_pos[:,0]>=-1*maxrad) & (star_pos[:,0]<=maxrad) & (star_pos[:,1]>=-1*maxrad) & (star_pos[:,1]<=maxrad) & (star_pos[:,2]>=-1*maxrad) & (star_pos[:,2]<=maxrad)
+        
+        print(f"shape before masking: star_pos {star_pos.shape}, star_mass {star_mass.shape}")
         star_pos = star_pos[pos_mask]
         star_mass = star_mass[pos_mask]
+        h_vals_to_star_pos = h_vals[pos_mask]
         print(f"shape after masking: star_pos {star_pos.shape}, star_mass {star_mass.shape}")
 
         first_axis_min = np.min(star_pos[:,0])
@@ -113,13 +137,22 @@ if __name__ == '__main__':
         star_pos[:,0] += np.abs(first_axis_min) #shift entire galaxy to quadrant I
         star_pos[:,1] += np.abs(second_axis_min)
         star_pos[:,2] += np.abs(third_axis_min)
-        grid_length = 0.5 #h-1 Kpc i.e., code units  #UPDATE: you will want to increase this grid size by a factor of two or more
+        grid_length = 3 #0.5 #h-1 Kpc i.e., code units  #UPDATE: you will want to increase this grid size by a factor of two or more
         grid_no = int(1+(2*maxrad/grid_length))
         gal_center_in_map_first_ax = (int(np.floor(np.abs(first_axis_min)/grid_length))%grid_no)
         gal_center_in_map_second_ax = (int(np.floor(np.abs(second_axis_min)/grid_length))%grid_no)
         gal_center_in_map_thrid_ax  = (int(np.floor(np.abs(third_axis_min)/grid_length))%grid_no)
-    
 
+        print(f"size of star_pos: {star_pos.shape} with size of hvals: {h_vals_to_star_pos.shape}")
+        input("press ENTER to continue...")
+
+        del virial_radius
+        del central_pos
+        del hval
+        del this_file
+        del pos_mask
+        print("deleted old vars")
+        
         """ #UPDATE: NEED TO REPLACE H_VALS with SubfindHsml from particle files
         cKDTree = spatial.cKDTree(data=star_pos)
         distances, ix = cKDTree.query(x=star_pos, k=17, p=2)
@@ -132,31 +165,103 @@ if __name__ == '__main__':
     
         this_Mapping = Illustris_Density_Mapper(star_pos, grid_no, grid_length, h_vals, star_mass)
         this_Mapping.assign_particles_to_grid()
+        print(f"finished assigning particles to grid")
+
     
-        density_mesh = this_Mapping.particle_mesh
+        density_mesh = this_Mapping.particle_mesh[:]
+
+        del this_Mapping
+        print(f"deleted mapping")
+
+	        
         total_stellar_mass = density_mesh*grid_length*grid_length*grid_length*10**10
-        total_stellar_mass = np.log10(total_stellar_mass)
+        # total_stellar_mass[total_stellar_mass == 0] = -np.inf
         
-        np.save("/data/density_maps/boundparts/stellar_mass_density_map_subID_"+str(this_subid), density_mesh)
+        print(f"total_sellar_mass_size: {len(total_stellar_mass)}")
+        
+        total_stellar_mass_mask = (total_stellar_mass > 0) & np.isfinite(total_stellar_mass)
+        total_stellar_mass = np.log10(total_stellar_mass, where=total_stellar_mass_mask, out=np.full_like(total_stellar_mass, -np.inf))
+        # total_stellar_mass = np.log10(total_stellar_mass[total_stellar_mass_mask])
+        # total_stellar_mass[~total_stellar_mass_mask] = -np.inf  # Set invalid values to -inf
+        # total_stellar_mass = np.log10(total_stellar_mass)
+        print(f"finished total_stellar_mass")
+
+        # size_in_bytes = total_stellar_mass.nbytes
+
+        # # Convert to more readable format
+        # size_in_mb = size_in_bytes / (1024 * 1024)
+        # size_in_gb = size_in_bytes / (1024 * 1024 * 1024)
+        
+        # print(f"Array size in memory: {size_in_bytes:,} bytes")
+        # print(f"Array size in memory: {size_in_mb:.2f} MB")
+        # print(f"Array size in memory: {size_in_gb:.2f} GB")
+        
+        # Note: .npy files have a small header (usually ~128 bytes)
+        # estimated_file_size = size_in_bytes + 128
+
+        # input("press ENTER to continue...")
+        
+        # print("attempting to save density mesh")
+        # # np.save("/home/poulin.al/data/density_maps/boundparts/stellar_mass_density_map_subID_"+str(this_subid), density_mesh)
+        # np.save("../../../../scratch/poulin.al/dust/data/density_maps/boundparts/stellar_mass_density_map_subID_"+str(this_subid), density_mesh)
+        # print("saved density mesh")
+
+        with h5py.File(f"../../../../scratch/poulin.al/dust/data/density_maps/boundparts/stellar_mass_density_map_subID_{this_subid}.hdf5", "w") as hf:
+            hf.create_dataset("density_mesh", data=density_mesh)
+            print(f"Saved density mesh to HDF5 for subID {this_subid}")
+
+        del density_mesh
+
+        print(f"successfully saved stellar_mass_density_map")
         
         star_pos[:,0] -= np.abs(first_axis_min)
         star_pos[:,1] -= np.abs(second_axis_min)
         star_pos[:,2] -= np.abs(third_axis_min)
-        radlist = np.ones_like(h_vals)*maxrad
-        gal_center_list_1 = np.ones_like(h_vals)*gal_center_in_map_first_ax
-        gal_center_list_2 = np.ones_like(h_vals)*gal_center_in_map_second_ax
-        gal_center_list_3 = np.ones_like(h_vals)*gal_center_in_map_second_ax
-        particle_info = np.column_stack((star_pos, h_vals))
+        radlist = np.ones_like(h_vals_to_star_pos)*maxrad
+        # print(f"shape hvals: {len(h_vals)}, shape hvals_to_star_pos: {len(h_vals_to_star_pos)}, gal_Center_First: {gal_center_in_map_first_ax}, centersecond: {gal_center_in_map_second_ax}, centerthird: {gal_center_in_map_thrid_ax}")
+        gal_center_list_1 = np.ones_like(h_vals_to_star_pos)*gal_center_in_map_first_ax
+        gal_center_list_2 = np.ones_like(h_vals_to_star_pos)*gal_center_in_map_second_ax
+        # gal_center_list_3 = np.ones_like(h_vals)*gal_center_in_map_second_ax
+        gal_center_list_3 = np.ones_like(h_vals_to_star_pos)*gal_center_in_map_thrid_ax
+        particle_info = np.column_stack((star_pos, h_vals_to_star_pos))
         particle_info = np.column_stack((particle_info, star_mass))
         particle_info = np.column_stack((particle_info, radlist))
         particle_info = np.column_stack((particle_info, gal_center_list_1))
         particle_info = np.column_stack((particle_info, gal_center_list_2))
         particle_info = np.column_stack((particle_info, gal_center_list_3))
-        #particle first ax coord, particle second ax coord, particle third ax coord, particle h_vals, particle stellar mass, galaxy maxrad, gal center in map first ax, gal center in map second ax, gal center in map third ax
-        np.save("/data/density_maps/boundparts/particle_info_subID_"+str(this_subid), particle_info)
+        print(f"finished particle info")
         
-        #fig,ax = plt.subplots(1,1)
-        #plot = ax.imshow(total_stellar_mass[int(len(total_stellar_mass)/2)], vmin=5, vmax=8, cmap='plasma')#, vmin=0.0001, vmax=0.05)#, vmax=35)
-        #cbar = plt.colorbar(plot)
-        #cbar.set_label(r"Total Stellar Mass [log($\rmM_*/h^{-1}M_\odot$)]")
-        #plt.show()
+        
+        #particle first ax coord, particle second ax coord, particle third ax coord, particle h_vals, particle stellar mass, galaxy maxrad, gal center in map first ax, gal center in map second ax, gal center in map third ax
+        # np.save("/home/poulin.al/data/density_maps/boundparts/particle_info_subID_"+str(this_subid), particle_info)
+        # np.save("../../../../scratch/poulin.al/dust/data/density_maps/boundparts/particle_info_subID_"+str(this_subid), particle_info)
+
+        # print(f"successfully saved particle info")
+        
+        
+        with h5py.File(f"../../../../scratch/poulin.al/dust/data/density_maps/boundparts/particle_info_subID_{this_subid}.hdf5", "w") as hf:
+            hf.create_dataset("particle_info", data=particle_info)
+            hf.create_dataset("star_pos", data=star_pos)
+            hf.create_dataset("h_vals", data=h_vals_to_star_pos)
+            hf.create_dataset("star_mass", data=star_mass)
+            hf.create_dataset("radlist", data=radlist)
+            hf.create_dataset("N_cells_per_side", data=grid_no)
+            hf.create_dataset("cell_length", data=grid_length)
+            hf.create_dataset("gal_center_list_1", data=gal_center_list_1)
+            hf.create_dataset("gal_center_list_2", data=gal_center_list_2)
+            hf.create_dataset("gal_center_list_3", data=gal_center_list_3)
+            print(f"Saved particle_info and subarrays to HDF5 for subID {this_subid}")
+        
+        fig,ax = plt.subplots(1,1)
+        plot = ax.imshow(total_stellar_mass[int(len(total_stellar_mass)/2)], vmin=5, vmax=8, cmap='plasma')#, vmin=0.0001, vmax=0.05)#, vmax=35)
+        cbar = plt.colorbar(plot)
+        cbar.set_label(r"Total Stellar Mass [log($\rmM_*/h^{-1}M_\odot$)]")
+        plt.show()
+
+
+
+
+
+if __name__ == '__main__':
+    
+    make_all_maps()

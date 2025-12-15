@@ -23,15 +23,18 @@ class Illustris_Density_Mapper():
         """
         TODO: Comment
         """
+        print(f"shape particle_coords: {particle_coords}, n_cells: {N_cells_per_side}, cell_length: {cell_length}, star_mass: {star_mass}")
         self.particle_coords = particle_coords
         self.N_cells_per_side = N_cells_per_side
         self.cell_length = cell_length
         self.h_vals = h_vals
         self.star_mass = star_mass
         self.particle_mesh = np.zeros((self.N_cells_per_side,self.N_cells_per_side,self.N_cells_per_side))
+        print(f"finished init of Illustris_Density_Mapper")
     
     def assign_particles_to_grid(self):
         for particle in range(self.particle_coords.shape[0]):
+            print(f"Progress... assigning particle: {particle} out of {self.particle_coords.shape[0]}")
             nearest_cell_x_coord = (int(np.floor(self.particle_coords[particle][0]/self.cell_length))%self.N_cells_per_side) - 1
             nearest_cell_y_coord = (int(np.floor(self.particle_coords[particle][1]/self.cell_length))%self.N_cells_per_side) - 1
             nearest_cell_z_coord = (int(np.floor(self.particle_coords[particle][2]/self.cell_length))%self.N_cells_per_side) - 1

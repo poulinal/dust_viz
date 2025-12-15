@@ -1,3 +1,6 @@
 /data
 .env
 *.hdf5
+*.dat
+/plots
+*.png
