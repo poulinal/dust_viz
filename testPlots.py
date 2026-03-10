@@ -362,7 +362,7 @@ def create_density_movie(stellar_mass_density_map_, box_size, output_file='densi
                     contourlines = ax.contour(Y_grid, Z_grid, log_density, levels=30, cmap='viridis', linewidths=1, vmin = lowpercent, vmax = maxpercent)
                 else:
                     RuntimeError("percentiles is not ndarray > 1")
-                    return
+                    # return
                     contourlines = ax.contour(Y_grid, Z_grid, log_density, levels=30, cmap='viridis', linewidths=1)
 
             elif contourTolerance == "constant":

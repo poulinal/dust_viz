@@ -8,7 +8,7 @@ True expression would use cooling look up tables, but not sure where to find tho
 
 import numpy as np
 import h5py
-from src.iapi_TNG import getredshift
+from iapi_TNG import getredshift
 import os
 
 global k_b, m_H, avg_nucl_num, T_cold, beta, T_SN, A_0, unit_length, unit_mass, unit_velocity, rho_th
@@ -33,6 +33,7 @@ rho_th = 0.000754654 #code units
 #negotiable
 avg_nucl_num = 15.5 #average nucelon number for metals in solar metallicity
 print(t_SFR/(60*60*24*365.25*10**9))
+
 def ISM_check(rho, u, X, x_e, gamma_min_one=2/3):
     """
     Check if particle is in ISM based on temperature/density threshold
@@ -330,7 +331,7 @@ class GasCells:
         #print('found region properties')
 
         return()
-        """
+        # """
         #compute total dust in different regions
         with h5py.File(self.post_fName, 'a') as f:
             u_grp = f['Universal']
@@ -372,7 +373,7 @@ class GasCells:
             m_grp.attrs['IF_Mg_dust_sum'] = np.sum(m_grp['M_Mg_dust'][u_grp['IF_ref']])
             m_grp.attrs['CGM_Mg_dust_sum'] = np.sum(m_grp['M_Mg_dust'][u_grp['CGM_ref']])
             m_grp.attrs['ISM_Mg_dust_sum'] = np.sum(m_grp['M_Mg_dust'][u_grp['ISM_ref']])
-            """
+            # """
             
             
 

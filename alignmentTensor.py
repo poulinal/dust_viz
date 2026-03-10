@@ -20,7 +20,8 @@ import math
 #from mpl_toolkits import mplot3d
 import glob
 import h5py
-import get_n_cores as gnc
+# import get_n_cores as gnc
+import os
 from multiprocessing import Pool
 from os.path import exists
 import pickle
@@ -37,28 +38,51 @@ headers = {"api-key" : api_key}
 h=0.6674
 
 
-def runall(cutout_file, output_file, snapnum):
+def n_cores(use_physical_cores=False, cores_var='NSLOTS'):
+    # Check for HPC scheduler environment variable
+    if cores_var in os.environ:
+        return int(os.environ[cores_var])
+    
+    # Default to all available cores
+    return multiprocessing.cpu_count()
+
+
+def runallAlignmentTensor(cutout_file, output_file, bound_folder, snapnum):
     # galcat=np.load('/projectnb/gravlens/bnmcd/SFR/catalogs/subhalocat.npy',allow_pickle=True).item()
-    galcat=np.load(cutout_file, allow_pickle=True).item()    
-    s_mass=galcat['s_mass']
-    ID=galcat['subID']
-    galinds=np.arange(len(s_mass))
-    xgal=[]
-    z='/projectnb/gravlens/bnmcd/SFR/catalogs/boundparts/'
-    for f in range(0,len(galinds)):
-        #print(f)
-        #if f==3138 or f==2739: continue
-        if not exists(z+str(ID[f])+'.pkl'):
-            xgal.append(f)
+    # galcat=np.load(cutout_file, allow_pickle=True).item()    
+    with h5py.File(cutout_file, 'r') as f:
+        #print all keys
+        def print_structure(name, obj):
+            if isinstance(obj, h5py.Dataset):
+                print(f"{name}: {obj.shape} {obj.dtype}")
+            else:
+                print(f"{name}/")
+        
+        f.visititems(print_structure)
+
+    # s_mass=galcat['s_mass']
+    # ID=galcat['subID']
+    # galinds=np.arange(len(s_mass))
+    # xgal=[]
+    # # z='/projectnb/gravlens/bnmcd/SFR/catalogs/boundparts/'
+    # for f in range(0,len(galinds)):
+    #     #print(f)
+    #     #if f==3138 or f==2739: continue
+    #     if not exists(z+str(ID[f])+'.pkl'):
+    #         xgal.append(f)
             
         
-    print(len(xgal))    
-    ncores=gnc.n_cores(use_physical_cores=False, cores_var='NSLOTS')
+    # print(len(xgal))    
+    # ncores=n_cores(use_physical_cores=False, cores_var='NSLOTS')
     
-    if __name__ == '__main__':
-        with Pool(ncores) as p:
+    # if __name__ == '__main__':
+    #     with Pool(ncores) as p:
                 
-            p.map(galprof,galinds)
+    #         p.map(galprof,galinds)
+
+
+    #run only one
+    galprof(0)
             
         
     return
@@ -574,6 +598,6 @@ def get(path,parttype='gas', params=None):
     return r    
     
 #galprof(905)   
-runall()    
+# runall()    
 #galprof(5000,findparts=False)
     

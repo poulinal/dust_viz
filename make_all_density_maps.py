@@ -64,7 +64,7 @@ a = 1.0 / (1 + z)  # scale factor, where z = redshift
 def make_all_maps():
     # PATH_TO_FILES = '/projectnb/gravlens/bnmcd/SFR/catalogs/boundparts/'
     # PATH_TO_FILES = '/Users/alexpoulin/Downloads/git/dust_viz/data/'
-    PATH_TO_FILES = '/home/poulin.al/git/dust_viz/data/'
+    PATH_TO_FILES = '/scratch/poulin.al/dust/data/'
     # all_files = glob.glob(PATH_TO_FILES+"*.pkl")
     #all_files=['/projectnb/gravlens/bnmcd/SFR/catalogs/boundparts/270967.pkl'] #test file
     all_files = glob.glob(PATH_TO_FILES+"*.hdf5")
@@ -98,11 +98,11 @@ def make_all_maps():
         
 
         # Virial radius (R200c) in simulation units (ckpc/h)
-        with h5py.File('data/groupR200/tempCat_groupR200c.hdf5', 'r') as f:
+        with h5py.File('/scratch/poulin.al/dust/data/groupR200/tempCat_groupR200c.hdf5', 'r') as f:
             # print("Group data keys:", f['Group']['Group_R_Crit200'])
             virial_radius = f['Group']['Group_R_Crit200'][:] # in 𝑐𝑘𝑝𝑐/ℎ
             
-        with h5py.File('data/groupR200/tempCat_groupPos.hdf5', 'r') as f:
+        with h5py.File('/scratch/poulin.al/dust/data/groupR200/tempCat_groupPos.hdf5', 'r') as f:
             # print("Group data keys:", f.keys())
             central_pos = f['Group']['GroupPos'][:] # in 𝑐𝑘𝑝𝑐/ℎ
         central_pos = central_pos * a / h
@@ -206,7 +206,7 @@ def make_all_maps():
         # np.save("../../../../scratch/poulin.al/dust/data/density_maps/boundparts/stellar_mass_density_map_subID_"+str(this_subid), density_mesh)
         # print("saved density mesh")
 
-        with h5py.File(f"../../../../scratch/poulin.al/dust/data/density_maps/boundparts/stellar_mass_density_map_subID_{this_subid}.hdf5", "w") as hf:
+        with h5py.File(f"/scratch/poulin.al/dust/data/density_maps/boundparts/stellar_mass_density_map_subID_{this_subid}.hdf5", "w") as hf:
             hf.create_dataset("density_mesh", data=density_mesh)
             print(f"Saved density mesh to HDF5 for subID {this_subid}")
 
@@ -239,7 +239,7 @@ def make_all_maps():
         # print(f"successfully saved particle info")
         
         
-        with h5py.File(f"../../../../scratch/poulin.al/dust/data/density_maps/boundparts/particle_info_subID_{this_subid}.hdf5", "w") as hf:
+        with h5py.File(f"/scratch/poulin.al/dust/data/density_maps/boundparts/particle_info_subID_{this_subid}.hdf5", "w") as hf:
             hf.create_dataset("particle_info", data=particle_info)
             hf.create_dataset("star_pos", data=star_pos)
             hf.create_dataset("h_vals", data=h_vals_to_star_pos)

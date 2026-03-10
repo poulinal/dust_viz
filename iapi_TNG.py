@@ -67,11 +67,12 @@ def gettree(snapnum,subid):
     tree=get(url,fName=fName)
     return(tree)
 
-def getredshift(snapnum):
+def getredshift(snapnum, simname):
     
     r=get(baseUrl)
     names = [sim['name'] for sim in r['simulations']]
-    i = names.index('TNG100-1')
+    # i = names.index('TNG100-1')
+    i = names.index(simname)
     sim = get( r['simulations'][i]['url'] )
     
     snaps = get( sim['snapshots'] )
