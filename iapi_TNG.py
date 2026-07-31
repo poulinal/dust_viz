@@ -163,6 +163,8 @@ def getSubhaloField(field, simulation='TNG100-1', snapshot=99,
     """
 
     dataFile=fileName+'.hdf5'
+    #get parent of parent folder of fileName, if it exists
+    parent_folder = os.path.dirname(os.path.dirname(dataFile))
     
     if not os.path.exists(dataFile) or rewriteFile==1:
         url='http://www.tng-project.org/api/'+simulation+'/files/groupcat-'+str(snapshot)+'/?Subhalo='+field
